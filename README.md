@@ -75,6 +75,7 @@ simplemde.value("This text will appear in the editor");
   - **uniqueId**: You must set a unique string identifier so that SimpleMDE can autosave. Something that separates this from other instances of SimpleMDE elsewhere on your website.
 - **blockStyles**: Customize how certain buttons that style blocks of text behave.
   - **bold** Can be set to `**` or `__`. Defaults to `**`.
+  - **code** Can be set to  ```` ``` ```` or `~~~`.  Defaults to ```` ``` ````.
   - **italic** Can be set to `*` or `_`. Defaults to `*`.
 - **element**: The DOM element for the textarea to use. Defaults to the first textarea on the page.
 - **hideIcons**: An array of icon names to hide. Can be used to hide specific icons shown by default without completely customizing the toolbar.
@@ -92,15 +93,15 @@ simplemde.value("This text will appear in the editor");
   - **underscoresBreakWords**: If set to `true`, let underscores be a delimiter for separating words. Defaults to `false`.
 - **placeholder**: Custom placeholder that should be displayed
 - **previewRender**: Custom function for parsing the plaintext Markdown and returning HTML. Used when user previews.
+- **promptURLs**: If set to `true`, a JS alert window appears asking for the link or image URL. Defaults to `false`.
 - **renderingConfig**: Adjust settings for parsing the Markdown during previewing (not editing).
   - **singleLineBreaks**: If set to `false`, disable parsing GFM single line breaks. Defaults to `true`.
   - **codeSyntaxHighlighting**: If set to `true`, will highlight using [highlight.js](https://github.com/isagalaev/highlight.js). Defaults to `false`. To use this feature you must include highlight.js on your page. For example, include the script and the CSS files like:<br>`<script src="https://cdn.jsdelivr.net/highlight.js/latest/highlight.min.js"></script>`<br>`<link rel="stylesheet" href="https://cdn.jsdelivr.net/highlight.js/latest/styles/github.min.css">`
 - **shortcuts**: Keyboard shortcuts associated with this instance. Defaults to the [array of shortcuts](#keyboard-shortcuts).
 - **showIcons**: An array of icon names to show. Can be used to show specific icons hidden by default without completely customizing the toolbar.
 - **spellChecker**: If set to `false`, disable the spell checker. Defaults to `true`.
-- **status**: If set to `false`, hide the status bar. Defaults to `true`.
-  - Optionally, you can set an array of status bar elements to include, and in what order.
-- **statusCustom**: An object of custom elements to add to the statusbar
+- **status**: If set to `false`, hide the status bar. Defaults to the array of built-in status bar items.
+  - Optionally, you can set an array of status bar items to include, and in what order. You can even define your own custom status bar items.
 - **tabSize**: If set, customize the tab size. Defaults to `2`.
 - **toolbar**: If set to `false`, hide the toolbar. Defaults to the [array of icons](#toolbar-icons).
 - **toolbarTips**: If set to `false`, disable toolbar button tips. Defaults to `true`.
@@ -145,6 +146,7 @@ var simplemde = new SimpleMDE({
 
 		return "Loading...";
 	},
+	promptURLs: true,
 	renderingConfig: {
 		singleLineBreaks: false,
 		codeSyntaxHighlighting: true,
@@ -156,17 +158,16 @@ var simplemde = new SimpleMDE({
 	spellChecker: false,
 	status: false,
 	status: ["autosave", "lines", "words", "cursor"], // Optional usage
-	statusCustom: {
-	    countKeyStrokes: { // Counts the total number of keystrokes
-	        defaultValue: function(span) {
-	            this.keystrokes = 0;
-	            span.innerHTML = "0 Keystrokes";
-	        },
-	        onUpdate: function(span) {
-	            span.innerHTML = ++this.keystrokes + " Keystrokes";
-	        }
-	    }
-	},
+	status: ["autosave", "lines", "words", "cursor", {
+		className: "keystrokes",
+		defaultValue: function(el) {
+			this.keystrokes = 0;
+			el.innerHTML = "0 Keystrokes";
+		},
+		onUpdate: function(el) {
+			el.innerHTML = ++this.keystrokes + " Keystrokes";
+		}
+	}], // Another optional usage, with a custom status bar item that counts keystrokes
 	tabSize: 4,
 	toolbar: false,
 	toolbarTips: false,
@@ -175,7 +176,7 @@ var simplemde = new SimpleMDE({
 
 #### Toolbar icons
 
-Below are the built-in toolbar icons (only some of which are enabled by default), which can be reorganized however you like. "Name" is the name of the icon, referenced in the JS. "Action" is either a function or a URL to open. "Class" is the class given to the icon. "Tooltip" is the small tooltip that appears via the `title=""` attribute. Note that shortcut hints are added automatically and reflect the specified "action" if it has a keybind assigned to it (ie. with the value of "action" set to `bold` and that of "tootip" set to "Bold", the final text the user will see - assuming the default shortcuts are unchanged - would be "Bold (Ctrl-B)").
+Below are the built-in toolbar icons (only some of which are enabled by default), which can be reorganized however you like. "Name" is the name of the icon, referenced in the JS. "Action" is either a function or a URL to open. "Class" is the class given to the icon. "Tooltip" is the small tooltip that appears via the `title=""` attribute. Note that shortcut hints are added automatically and reflect the specified action if it has a keybind assigned to it (i.e. with the value of `action` set to `bold` and that of `tooltip` set to `Bold`, the final text the user will see would be "Bold (Ctrl-B)").
 
 Additionally, you can add a separator between any icons by adding `"|"` to the toolbar array.
 
@@ -267,7 +268,7 @@ var simplemde = new SimpleMDE({
 });
 ```
 
-Shortcuts are automatically converted between platforms. If you define a shortcut as "Cmd-B", on PC that shortcut will be changed to "Ctrl-B". Conversely, a shortcut defined as "Ctrl-I" will become "Cmd-I" in a browser of a Mac user.
+Shortcuts are automatically converted between platforms. If you define a shortcut as "Cmd-B", on PC that shortcut will be changed to "Ctrl-B". Conversely, a shortcut defined as "Ctrl-B" will become "Cmd-B" for Mac users.
 
 The list of actions that can be bound is the same as the list of built-in actions available for [toolbar buttons](#toolbar-icons).
 
@@ -299,6 +300,16 @@ simplemde.codemirror.on("change", function(){
 });
 ```
 
+## Removing SimpleMDE from textarea
+You can revert to the initial textarea by calling the `toTextArea` method. Note that this clears up the autosave (if enabled) associated with it. The textarea will retain any text from the destroyed SimpleMDE instance.
+
+```JavaScript
+var simplemde = new SimpleMDE();
+...
+simplemde.toTextArea();
+simplemde = null;
+```
+
 ## Useful methods
 The following self-explanatory methods may be of use while developing with SimpleMDE.
 
@@ -311,25 +322,6 @@ simplemde.clearAutosavedValue(); // no returned value
 ```
 
 ## How it works
-SimpleMDE is an improvement of [lepture's Editor project](https://github.com/lepture/editor) and includes a great many number of changes. It is bundled with [CodeMirror](https://github.com/codemirror/codemirror) and depends on [Font Awesome](http://fortawesome.github.io/Font-Awesome/).
+SimpleMDE began as an improvement of [lepture's Editor project](https://github.com/lepture/editor), but has now taken on an identity of its own. It is bundled with [CodeMirror](https://github.com/codemirror/codemirror) and depends on [Font Awesome](http://fortawesome.github.io/Font-Awesome/).
 
 CodeMirror is the backbone of the project and parses much of the Markdown syntax as it's being written. This allows us to add styles to the Markdown that's being written. Additionally, a toolbar and status bar have been added to the top and bottom, respectively. Previews are rendered by [Marked](https://github.com/chjj/marked) using GFM.
-
-## What's changed?
-As mentioned earlier, SimpleMDE is an improvement of [lepture's Editor project](https://github.com/lepture/editor). So you might be wondering, what's changed? Quite a bit actually. Here's some notable changes:
-
-- Upgraded from CodeMirror 3 to CodeMirror 5
-- Many changes to the style, appearance, and user friendliness
-- Interface more closely resembles Bootstrap
-- Now mobile friendly
-- Option to autosave the text as you type
-- Now spell checks what you write
-- The text editor now automatically grows as you type more
-- Fixed a large amount of bugs
-- Switched to Font Awesome icons
-- Improved preview rendering in many ways
-- Improved as-you-type appearance of headers and code blocks
-- Simplified the toolbar
-- Many new options during instantiation
-- New icons and tooltips
-- Additional keyboard shortcuts
